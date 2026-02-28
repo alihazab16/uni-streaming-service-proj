@@ -8,6 +8,16 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <header>
+  <div class="nav">
+    <img src="logo.svg" class="logo">
+    <a href="/" >Home</a>
+    <a href="/order" class="active">Order Form</a>
+    <a href="/stats">Statistics</a>
+  </div>
+</header>
+
+
     <h1 id="cinemaName">Welcome to AzabPlex Cinema</h1>
     <div class="dropdown">
         <label for="serviceSelect">Select a streaming service:</label>
@@ -35,7 +45,7 @@
             <div id="minMessages"></div>
 
             
-            <button id="submitOrder" style="display:none;">Submit Order</button>
+            <button id="submitOrder" type="button" style="display:none;">Submit Order</button>
         </div>
     </div>
 
@@ -45,7 +55,7 @@
         <button id="confirmNo">No</button>
     </div>
 
-    <script src="data.js"></script>
+    
     <script src="web.js"></script>
 </body>
 </html>
