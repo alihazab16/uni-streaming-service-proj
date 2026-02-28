@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Streaming-Service</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+  <div class="nav">
+    <img src="logo.svg" class="logo">
+    <a href="/" >Home</a>
+    <a href="/order" class="active">Order Form</a>
+    <a href="/stats">Statistics</a>
+  </div>
+</header>
+
+
+    <h1 id="cinemaName">Welcome to AzabPlex Cinema</h1>
+    <div class="dropdown">
+        <label for="serviceSelect">Select a streaming service:</label>
+        <select id="serviceSelect"></select>
+    </div>
+
+    <h1 id="serviceInfo"></h1>
+
+    <div id="genreBar"></div>
+
+    <div id="mainLayout">
+        <div id="moviesColumn">
+            <h2 id="moviesTitle">Movies</h2>
+            <div id="movieList"></div>
+        </div>
+
+        <div id="orderColumn">
+            <h2>Current Order</h2>
+
+            <div id="orderSummary"></div>
+
+            
+            <div id="feeSummary"></div>
+            <div id="totalsSummary"></div>
+            <div id="minMessages"></div>
+
+            
+            <button id="submitOrder" type="button" style="display:none;">Submit Order</button>
+        </div>
+    </div>
+
+    <div id="confirmBox" style="display:none;">
+        <p id="confirmText"></p>
+        <button id="confirmYes">Yes</button>
+        <button id="confirmNo">No</button>
+    </div>
+
+    
+    <script src="web.js"></script>
+</body>
+</html>
