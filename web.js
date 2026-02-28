@@ -1,7 +1,9 @@
 document.addEventListener("DOMContentLoaded", () => {
     const order = {};
-    streamingServices.forEach(s => order[s.name] = []);
 
+    // streamingServices now comes from server
+    let streamingServices = [];       // summary list: [{id,name,minOrder,serviceFee}, ...]
+    let currentService = null;        // full service data (genres/movies) from /services?id=n
     let currentServiceIndex = null;
     let currentGenre = "All";
 
@@ -70,12 +72,25 @@ document.addEventListener("DOMContentLoaded", () => {
     placeHolder.selected = true;
     select.appendChild(placeHolder);
 
-    streamingServices.forEach((service, index) => {
-        const opt = document.createElement("option");
-        opt.value = index;
-        opt.textContent = service.name;
-        select.appendChild(opt);
-    });
+    // === Load streaming-services list (summary only) from server ===
+    fetch("/services")
+        .then(resp => resp.json())
+        .then(data => {
+            // data is [{id,name,minOrder,serviceFee}, ...]
+            streamingServices = data;
+
+            // build empty order buckets per service name
+            streamingServices.forEach(s => order[s.name] = []);
+
+            // fill dropdown
+            streamingServices.forEach((service) => {
+                const opt = document.createElement("option");
+                opt.value = service.id;        // IMPORTANT: value is service id now
+                opt.textContent = service.name;
+                select.appendChild(opt);
+            });
+        })
+        .catch(err => console.error("Failed to load /services:", err));
 
     
     function money(n) {
@@ -83,8 +98,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function getCurrentService() {
-        if (currentServiceIndex === null) return null;
-        return streamingServices[currentServiceIndex];
+        return currentService; 
     }
 
     function isMovieSelected(serviceName, movieId) {
@@ -111,30 +125,47 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     //service section
-    select.addEventListener("change", () => {
-        currentServiceIndex = Number(select.value);
-        currentGenre = "All";
+   select.addEventListener("change", () => {
 
-        const service = getCurrentService();
+    const selectedId = select.value; // id now (not index)
+    currentGenre = "All";
 
-        serviceInfo.textContent =
-            `${service.name} | Minimum Order: ${money(service.minOrder)} | Service Fee: ${money(service.serviceFee)}`;
+    // discard previous service data
+    currentService = null;
+    currentServiceIndex = streamingServices.findIndex(s => String(s.id) === String(selectedId));
 
-        genreBar.innerHTML = "";
-        movieList.innerHTML = "";
+    // get summary service (minOrder/serviceFee/name) from list
+    const summary = (currentServiceIndex === -1) ? null : streamingServices[currentServiceIndex];
+    if (!summary) return;
 
-        mainLayout.style.display = "flex";
+    serviceInfo.textContent =
+        `${summary.name} | Minimum Order: ${money(summary.minOrder)} | Service Fee: ${money(summary.serviceFee)}`;
 
-        createGenreItem("All");
-        for (const genre in service.genres) {
-            createGenreItem(genre);
-        }
+    genreBar.innerHTML = "";
+    movieList.innerHTML = "";
+    mainLayout.style.display = "flex";
 
-        moviesTitle.textContent = "All Movies";
+    // fetch FULL service (genres/movies) for this service only
+    fetch("/services?id=" + selectedId)
+        .then(resp => {
+            if (!resp.ok) throw new Error("Service not found");
+            return resp.json();
+        })
+        .then(serviceData => {
+            currentService = serviceData;
 
-        renderMovies();
-        renderOrder();
-    });
+            createGenreItem("All");
+            for (const genre in currentService.genres) {
+                createGenreItem(genre);
+            }
+
+            moviesTitle.textContent = "All Movies";
+
+            renderMovies();
+            renderOrder();
+        })
+        .catch(err => console.error("Failed to load /services?id= :", err));
+});
 
     //genre bar
     function createGenreItem(name) {
@@ -303,17 +334,61 @@ document.addEventListener("DOMContentLoaded", () => {
             submitOrderBtn.style.display = "block";
         }
     }
-    submitOrderBtn.addEventListener("click", () => {
-        alert("Order submitted! Thank you.");
+submitOrderBtn.addEventListener("click", () => {
 
-        // Clear order
-        streamingServices.forEach(s => order[s.name] = []);
+    // Build order JSON in the format your assignment wants
+    const fees = {};
+    const movies = {};
 
-        // Reset UI 
-        select.selectedIndex = 0; 
-        currentServiceIndex = null;
-        currentGenre = "All";
-        setBlankView();
+    let movieSubtotal = 0;
+    let feeTotal = 0;
+
+    streamingServices.forEach(service => {
+        const items = order[service.name] || [];
+        if (items.length === 0) return;
+
+        fees[service.name] = Number(service.serviceFee);
+        feeTotal += Number(service.serviceFee);
+
+        movies[service.name] = items.map(m => ({
+            id: m.id,
+            title: m.title,
+            description: m.description,
+            price: Number(m.price),
+            year: m.year
+        }));
+
+        items.forEach(m => movieSubtotal += Number(m.price));
     });
+
+    const subtotal = movieSubtotal + feeTotal;
+    const tax = subtotal * 0.13;
+    const total = subtotal + tax;
+
+    const orderData = {
+        fees,
+        subtotal: Number(subtotal.toFixed(2)),
+        tax: Number(tax.toFixed(2)),
+        total: Number(total.toFixed(2)),
+        movies
+    };
+
+    // POST to server
+fetch("/submit-order", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(orderData)
+})
+.then(async resp => {
+  const text = await resp.text();   // read body either way
+  if (!resp.ok) throw new Error(text);
+  return JSON.parse(text);          // server returns JSON
+})
+.then(() => {
+  alert("Order submitted! Thank you.");
+  // reset...
+})
+.catch(err => console.error("SERVER SAID:", err.message));
+});
 
 });
